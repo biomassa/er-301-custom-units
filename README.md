@@ -1,6 +1,12 @@
 # er-301-custom-units
 This is a fork of the er-301-custom-units repository by user tmsfet. Huge thanks to them!
 
+I am no DSP coder, so I am using Google Antigravity to help me code the C++ parts. 
+
+
+## Additions so far
+- Tape Delay: a proof-of-concept unit to study the workflow / toolchain. Has separate L / R time controls, feedback, dry/wet, wow/flutter, and saturation controls. 
+
 ## Building
 
 We need [odevices/er-301](https://github.com/odevices/er-301) as a submodule to access it's header files during the build:

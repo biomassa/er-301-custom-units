@@ -25,18 +25,21 @@ namespace tapedelay {
 
       addInput(mTime);
       addInput(mTimeR);
+      addInput(mTimeR);
       addInput(mFeedback);
       addInput(mWow);
       addInput(mFlutter);
       addInput(mDrive);
       addInput(mMix);
+      addInput(mFilterCutoff);
+      addInput(mFilterRes);
 
       mSampleRate = globalConfig.sampleRate;
       mMaxDelayInSamples = (int)(2.0f * mSampleRate); // 2 seconds max
       
-      mBuffer1.resize(mMaxDelayInSamples + 1, 0.0f);
+      mBuffer1.resize(mMaxDelayInSamples + 16, 0.0f);
       if (stereo) {
-        mBuffer2.resize(mMaxDelayInSamples + 1, 0.0f);
+        mBuffer2.resize(mMaxDelayInSamples + 16, 0.0f);
       }
     }
 
@@ -52,6 +55,8 @@ namespace tapedelay {
     od::Inlet mFlutter { "Flutter" };
     od::Inlet mDrive { "Drive" };
     od::Inlet mMix { "Mix" };
+    od::Inlet mFilterCutoff { "Cutoff" };
+    od::Inlet mFilterRes { "Res" };
 #endif
 
   private:
@@ -63,10 +68,42 @@ namespace tapedelay {
     std::vector<float> mBuffer2;
     int mWritePos = 0;
 
-    float mWowPhase = 0.0f;
-    float mFlutterPhase1 = 0.0f;
-    float mFlutterPhase2 = 0.0f;
-    float mFlutterPhase3 = 0.0f;
+    float mWowSmoothed = 0.0f;
+    float mFlutterSmoothed = 0.0f;
+    uint32_t mRngState = 123456789;
+    
+    // Tape mechanic physics phases
+    float mPhase1 = 0.0f;
+    float mPhase2 = 0.2f;
+    float mPhase3 = 0.5f;
+    float mPhase4 = 0.7f;
+
+    inline float std_abs(float x) { return x < 0.0f ? -x : x; }
+    inline float fast_sin(float p) {
+        float x = (p - 0.5f) * 2.0f;
+        float sine = 4.0f * x * (1.0f - std_abs(x));
+        return sine * 0.225f * (std_abs(sine) - 1.0f) + sine;
+    }
+    
+    // Fast pseudo-random number generator (-1.0 to 1.0)
+    inline float fast_randf() {
+        mRngState ^= mRngState << 13;
+        mRngState ^= mRngState >> 17;
+        mRngState ^= mRngState << 5;
+        return (float)((int32_t)mRngState) * 4.65661287e-10f; // multiply by 1 / (2^31 - 1)
+    }
+    
+    // SVF State (Left/Right)
+    float svf_ic1eq[2] = {0.0f, 0.0f};
+    float svf_ic2eq[2] = {0.0f, 0.0f};
+    
+    // Fast sigmoid approximation (Cubic) to vastly save CPU over tanhf
+    inline float fast_sigmoid(float x) {
+        float y = x;
+        if (y > 1.4142135f) y = 1.4142135f;
+        else if (y < -1.4142135f) y = -1.4142135f;
+        return y - (y * y * y) * 0.16666666f;
+    }
 
     // helper for cubic interpolation
     float cubicInterpolate(float y0, float y1, float y2, float y3, float mu) {

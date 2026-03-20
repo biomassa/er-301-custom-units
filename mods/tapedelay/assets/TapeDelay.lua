@@ -18,13 +18,13 @@ end
 function TapeDelay:onLoadGraph(channelCount)
   local stereo = channelCount > 1
   self.isStereo = stereo
-  
+
   local delay = self:addObject("delay", tapedelay.TapeDelay(stereo))
-  
+
   local mix = self:addObject("mix", app.GainBias())
   local time = self:addObject("time", app.GainBias())
   local timeRange = self:addObject("timeRange", app.MinMax())
-  
+
   local timeR = nil
   local timeRangeR = nil
   if stereo then
@@ -37,10 +37,14 @@ function TapeDelay:onLoadGraph(channelCount)
   local flutter = self:addObject("flutter", app.GainBias())
   local drive = self:addObject("drive", app.GainBias())
 
+  -- New Filter controls
+  local cutoff = self:addObject("cutoff", app.GainBias())
+  local res = self:addObject("res", app.GainBias())
+
   connect(mix, "Out", delay, "Mix")
   connect(time, "Out", delay, "Time L")
   connect(time, "Out", timeRange, "In")
-  
+
   if stereo then
     connect(timeR, "Out", delay, "Time R")
     connect(timeR, "Out", timeRangeR, "In")
@@ -51,6 +55,10 @@ function TapeDelay:onLoadGraph(channelCount)
   connect(flutter, "Out", delay, "Flutter")
   connect(drive, "Out", delay, "Drive")
 
+  -- Filter mapping
+  connect(cutoff, "Out", delay, "Cutoff")
+  connect(res, "Out", delay, "Res")
+
   self:addMonoBranch("mix", mix, "In", mix, "Out")
   self:addMonoBranch("time", time, "In", time, "Out")
   if stereo then
@@ -60,10 +68,12 @@ function TapeDelay:onLoadGraph(channelCount)
   self:addMonoBranch("wow", wow, "In", wow, "Out")
   self:addMonoBranch("flutter", flutter, "In", flutter, "Out")
   self:addMonoBranch("drive", drive, "In", drive, "Out")
+  self:addMonoBranch("cutoff", cutoff, "In", cutoff, "Out")
+  self:addMonoBranch("res", res, "In", res, "Out")
 
   connect(self, "In1", delay, "In1")
   connect(delay, "Out1", self, "Out1")
-  
+
   if stereo then
     connect(self, "In2", delay, "In2")
     connect(delay, "Out2", self, "Out2")
@@ -73,10 +83,10 @@ end
 function TapeDelay:onLoadViews(objects, branches)
   local controls = {}
   local views = {
-    expanded = {"mix", "time"},
+    expanded = { "mix", "time" },
     collapsed = {}
   }
-  
+
   controls.mix = GainBias {
     button = "mix",
     description = "Wet/Dry Mix",
@@ -127,6 +137,30 @@ function TapeDelay:onLoadViews(objects, branches)
     gainMap = Encoder.getMap("gain")
   }
 
+  table.insert(views.expanded, "cutoff")
+  controls.cutoff = GainBias {
+    button = "cut",
+    description = "Filter Cutoff (V/Oct)",
+    branch = branches.cutoff,
+    gainbias = objects.cutoff,
+    range = objects.cutoff,
+    biasMap = Encoder.getMap("[-5,5]"),
+    initialBias = 0.0,
+    gainMap = Encoder.getMap("gain")
+  }
+
+  table.insert(views.expanded, "res")
+  controls.res = GainBias {
+    button = "res",
+    description = "Filter Resonance",
+    branch = branches.res,
+    gainbias = objects.res,
+    range = objects.res,
+    biasMap = Encoder.getMap("[0,1]"),
+    initialBias = 0.1,
+    gainMap = Encoder.getMap("gain")
+  }
+
   table.insert(views.expanded, "wow")
   controls.wow = GainBias {
     button = "wow",
@@ -158,7 +192,6 @@ function TapeDelay:onLoadViews(objects, branches)
     branch = branches.drive,
     gainbias = objects.drive,
     range = objects.drive,
-    -- Drive unipolar [0, 1] per requested feedback
     biasMap = Encoder.getMap("[0,1]"),
     initialBias = 0.0,
     gainMap = Encoder.getMap("gain")

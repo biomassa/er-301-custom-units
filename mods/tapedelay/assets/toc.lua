@@ -1,7 +1,7 @@
 return {
   name = "TapeDelay",
   title = "Tape Delay Custom Package",
-  author = "Antigravity",
+  author = "black dingus",
   units = {
     {
       title = "Tape Delay",

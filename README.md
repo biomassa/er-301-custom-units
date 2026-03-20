@@ -14,7 +14,6 @@ git submodule update --init
 
 ### Make Commands
 
-
 | Command | Description |
 |----|----|
 | `make -j all` | Build everything |
@@ -23,3 +22,14 @@ git submodule update --init
 | `make emu` | Build and start the emulator |
 | `make release` | Build and package everything for release |
 | `make <mod>-install-sd` | Copy a release package to the SD card |
+
+### Example units
+
+Working example of a middle layer (Lua) unit is in the folder /harmonic.
+Working examples of low level units (C++ and Lua) are in /mods folder.
+
+### Docker file
+
+The docker file needed for cross-compilation into the am335x architecture is in docker/
+
+Code needs to use Neon intrinsics for vectorization / optimization.

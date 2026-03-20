@@ -1,9 +1,5 @@
 # er-301-custom-units
-[![Release](https://github.com/tmfset/er-301-custom-units/actions/workflows/release.yml/badge.svg)](https://github.com/tmfset/er-301-custom-units/actions/workflows/release.yml)
-
-A collection of bespoke units for the ER-301.
-
-Go to the [hub](https://er301-hub.netlify.app/) for module documentation.
+This is a fork of the er-301-custom-units repository by user tmsfet. Huge thanks to them!
 
 ## Building
 
@@ -23,13 +19,15 @@ git submodule update --init
 | `make release` | Build and package everything for release |
 | `make <mod>-install-sd` | Copy a release package to the SD card |
 
-### Example units
+## Example units
 
 Working example of a middle layer (Lua) unit is in the folder /harmonic.
 Working examples of low level units (C++ and Lua) are in /mods folder.
 
-### Docker file
+## Docker file
 
 The docker file needed for cross-compilation into the am335x architecture is in docker/
+
+## Notes
 
 Code needs to use Neon intrinsics for vectorization / optimization.

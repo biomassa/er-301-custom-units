@@ -23,6 +23,7 @@ The core DSP happens in C++ for maximum performance on the ARM processor.
 
 ## Lua High/Middle-Level Units (`/harmonic` and `/mods`)
 Lua is used for the middle-layer logic, UI, and connecting the low-level DSP blocks into a functional unit.
+- **Available DSP Objects:** A comprehensive list of existing DSP objects exposed to Lua (along with their parameters and options) can be found in [`DSP_OBJECTS.md`](DSP_OBJECTS.md). Always check this reference to reuse existing DSP blocks before building new ones from scratch!
 - Units are defined as classes inheriting from `Unit` (via `Base.Class`).
 - **Initialization:** The `init(args)` sets up the unit's metadata like `title`, `mnemonic`, and `version`.
 - **DSP Graph (`onLoadGraph(channelCount)`):** This method builds the DSP graph.

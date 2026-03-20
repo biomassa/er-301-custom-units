@@ -7,6 +7,7 @@ This document captures architectural and structural context for developing bespo
 - The build is orchestrated via `make` using a Docker container (`tomjfiset/er-301-am335x-build-env:1.1.2`) for cross-compiling to the `am335x` ARM architecture.
 - Modules (called Units in ER-301 parlance) are grouped in `mods/`, `Accents/` and `harmonic/`.
 - Building a module generally uses `make -j <mod>`. A `mod.mk` file is included in each module directory which pulls in `scripts/mod-builder.mk`.
+- **Version Iteration**: ALWAYS iterate the `PKGVERSION` in the module's `mod.mk` (or `Makefile`) on every new compilation. The ER-301 package manager requires incremented version numbers to correctly identify, unpack, and install updated payloads over existing module binaries.
 
 ## C++ Low-Level Units (`mods/`, `Accents/`)
 The core DSP happens in C++ for maximum performance on the ARM processor.

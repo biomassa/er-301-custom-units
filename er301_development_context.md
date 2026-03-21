@@ -25,6 +25,30 @@ The core DSP happens in C++ for maximum performance on the ARM processor.
 - **Processing:** Audio is processed in blocks of `FRAMELENGTH` loops. The `process()` method delegates to an internal block-processing loop.
 - **SWIG Bindings:** C++ classes are bound to Lua using SWIG. Each module directory contains a `.cpp.swig` file (e.g., `strike.cpp.swig`) which declares the headers to be exposed to the Lua environment. `SWIGLUA` macros are used in the headers to hide implementation details from SWIG.
 
+## Faust DSP Integration (`faust2er301`)
+You can write core DSP logic using the Faust language and automatically generate `od::Object` compliant C++ classes.
+- **Metadata Requirements:** Your `.dsp` file MUST explicitly name inputs and outputs using ER-301 metadata declarations. Failure to provide these will cause the Python parser to raise a `KeyError` during compilation.
+  ```faust
+  declare name "MyUnit";
+  declare er301_in1 "inL";
+  declare er301_in2 "inR";
+  // ... and so forth for all your inputs/outputs
+  declare er301_out1 "outL";
+  declare er301_out2 "outR";
+  ```
+- **UI Elements to Parameters:** Faust UI primitives (`hslider`, `checkbox`) are automatically extracted and transformed into `od::Parameter` instances in the generated C++ wrappers.
+- **Compilation Tooling:** To run the conversion, you MUST execute the `faust2er301` script from within its directory (`faust2er301/bin/`) so it can resolve its Python helper scripts:
+  ```bash
+  cd /home/dingus/301dev/er-301-custom-units/faust2er301/bin
+  ./faust2er301 /path/to/your/dsp/file.dsp
+  ```
+- **Generated Code:** The script produces identically named `.cpp` and `.h` objects containing your DSP struct alongside the source `.dsp` file.
+- **CRITICAL - SIMD Optimizations:** Standard scalar Faust generation may easily overrun the Cortex-A8 CPU limits. You must ensure the resulting generated logic is optimized:
+  - You can experiment with enabling Faust vectorization flags mapping to 4-sample boundaries (`-vec -vs 4`) inside the `faust2er301` wrapper script to naturally align with ER-301 chunking.
+  - If auto-vectorization is insufficient, you may need to mechanically extract the inner loop math from the generated C++ and convert it into explicit SIMD intrinsics using `<hal/simd.h>`.
+  - Ensure any heavy scalar transcendental math (like `std::tan`) introduced by Faust parameter smoothing is refactored into block-initialization steps, away from per-sample loop evaluation.
+
+
 ## Lua High/Middle-Level Units (`/harmonic` and `/mods`)
 Lua is used for the middle-layer logic, UI, and connecting the low-level DSP blocks into a functional unit.
 - **Available DSP Objects:** A comprehensive list of existing DSP objects exposed to Lua (along with their parameters and options) can be found in [`DSP_OBJECTS.md`](DSP_OBJECTS.md). Always check this reference to reuse existing DSP blocks before building new ones from scratch!

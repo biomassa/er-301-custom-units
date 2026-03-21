@@ -1,0 +1,150 @@
+#! /bin/env python3
+
+import fileinput
+import json
+import sys
+
+raw = ''.join([line for line in fileinput.input()])
+data = json.loads(raw)
+
+name = data['name']
+filename = data['filename']
+input_count = data['inputs']
+output_count = data['outputs']
+meta = {k: v for m in data['meta'] for k, v in m.items()}
+
+try:
+    inputs = [meta[f'er301_in{n}'] for n in range(1, input_count+1)]
+    outputs = [meta[f'er301_out{n}'] for n in range(1, output_count+1)]
+except KeyError as e:
+    print('\n\nMissing process function in/out name declaration needed for er-301 object\n\n', file=sys.stderr)
+    raise e
+
+
+input_defns = '\n  '.join([f'od::Inlet m{input_name}{{"{input_name}"}};' for input_name in inputs])
+output_defns = '\n  '.join([f'od::Outlet m{output_name}{{"{output_name}"}};' for output_name in outputs])
+
+# Get all the ui elements (to become paramters)
+def iterate_items(items):
+    sliders = []
+    for item in items:
+        if item['type'] == 'hslider' or item['type'] == 'vslider':
+            sliders.append((item['label'], item['min'], item['max']))
+        if item['type'] == 'vgroup' or item['type'] == 'hgroup':
+            sliders.extend(iterate_items(item['items']))
+    return sliders
+
+params = iterate_items(data['ui']) if 'ui' in data else []
+param_defn = '\n  '.join([f'od::Parameter m{param_name}{{"{param_name}"}};' for (param_name, _, _) in params])
+param_floats = '\n  '.join([f'FAUSTFLOAT* ff{param_name};' for (param_name, _, _) in params])
+param_set = '\n    '.join([f'''if (strcmp(label, "{param_name}") == 0) {{
+      ff{param_name} = zone;
+    }}'''
+for (param_name, _, _) in params])
+
+print(f"""<<includeIntrinsic>>
+
+#include <string.h>
+#include <od/objects/Object.h>
+
+#define FAUSTFLOAT float
+
+#ifndef SWIGLUA
+
+#ifndef __FAUST_301_BOILERPLATE__
+#define __FAUST_301_BOILERPLATE__
+
+class dsp {{}};
+
+class ParametersSetter {{
+public:
+  virtual void addParam(const char* label, FAUSTFLOAT* zone) = 0;
+}};
+
+struct Meta {{
+  virtual void declare(const char* key, const char* value) {{}};
+}};
+
+struct Soundfile {{
+  FAUSTFLOAT** fBuffers;
+  int* fLength;   // length of each part
+  int* fSR;       // sample rate of each part
+  int* fOffset;   // offset of each part in the global buffer
+  int fChannels;  // max number of channels of all concatenated files
+}};
+
+class UI {{
+public:
+  UI(ParametersSetter *_ps) {{
+    ps = _ps;
+  }}
+
+  // -- widget's layouts
+  virtual void openTabBox(const char* label) {{}}
+  virtual void openHorizontalBox(const char* label) {{}}
+  virtual void openVerticalBox(const char* label) {{}}
+  virtual void closeBox() {{}}
+
+  // -- active widgets
+  virtual void addButton(const char* label, FAUSTFLOAT* zone) {{
+    ps->addParam(label, zone);
+  }}
+  virtual void addCheckButton(const char* label, FAUSTFLOAT* zone) {{
+    ps->addParam(label, zone);
+  }}
+  virtual void addVerticalSlider(const char* label, FAUSTFLOAT* zone, FAUSTFLOAT init, FAUSTFLOAT min, FAUSTFLOAT max, FAUSTFLOAT step) {{
+    ps->addParam(label, zone);
+  }}
+  virtual void addHorizontalSlider(const char* label, FAUSTFLOAT* zone, FAUSTFLOAT init, FAUSTFLOAT min, FAUSTFLOAT max, FAUSTFLOAT step) {{
+    ps->addParam(label, zone);
+  }}
+  virtual void addNumEntry(const char* label, FAUSTFLOAT* zone, FAUSTFLOAT init, FAUSTFLOAT min, FAUSTFLOAT max, FAUSTFLOAT step) {{
+    ps->addParam(label, zone);
+  }}
+
+  // -- passive widgets
+  virtual void addHorizontalBargraph(const char* label, FAUSTFLOAT* zone, FAUSTFLOAT min, FAUSTFLOAT max) {{}}
+  virtual void addVerticalBargraph(const char* label, FAUSTFLOAT* zone, FAUSTFLOAT min, FAUSTFLOAT max) {{}}
+
+  // -- soundfiles
+  virtual void addSoundfile(const char* label, const char* filename, Soundfile** sf_zone) {{}}
+
+  // -- metadata declarations
+  virtual void declare(FAUSTFLOAT* zone, const char* key, const char* val) {{}}
+
+private:
+  ParametersSetter *ps;
+}};
+#endif
+
+<<includeclass>>
+#endif
+
+class {name} :
+    public od::Object
+#ifndef SWIGLUA
+    , public ParametersSetter
+#endif
+{{
+public:
+  {name}();
+  ~{name}();
+
+#ifndef SWIGLUA
+  virtual void process();
+  {input_defns}
+  {output_defns}
+  {param_defn}
+  virtual void addParam(const char* label, FAUSTFLOAT* zone) {{
+    {param_set}
+  }}
+
+private:
+  {param_floats}
+  Dsp{name} DSP;
+
+#endif
+
+}};
+"""
+)

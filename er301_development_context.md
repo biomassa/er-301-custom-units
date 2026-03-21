@@ -27,9 +27,11 @@ The core DSP happens in C++ for maximum performance on the ARM processor.
 
 ## Faust DSP Integration (`faust2er301`)
 You can write core DSP logic using the Faust language and automatically generate `od::Object` compliant C++ classes.
+- **Header Synchronization:** The `declare name "X";` attribute in Faust MUST perfectly correspond to the `.dsp` filename without the extension, or else broken `#include` chains will be generated in `X.cpp`.
+- **UI Label Sanitization (CRITICAL):** Do not apply spacial formatting (spaces, strings, brackets) inside your Faust UI primitives (e.g. `vslider("Wave Fold")` must be `vslider("WaveFold")`). The Python templates interpret Faust UI strings as direct C++ variables (`ffWave Fold`) causing fatal compilation build errors. 
 - **Metadata Requirements:** Your `.dsp` file MUST explicitly name inputs and outputs using ER-301 metadata declarations. Failure to provide these will cause the Python parser to raise a `KeyError` during compilation.
   ```faust
-  declare name "MyUnit";
+  declare name "MyUnit"; // <--- MyUnit.dsp
   declare er301_in1 "inL";
   declare er301_in2 "inR";
   // ... and so forth for all your inputs/outputs
@@ -37,6 +39,8 @@ You can write core DSP logic using the Faust language and automatically generate
   declare er301_out2 "outR";
   ```
 - **UI Elements to Parameters:** Faust UI primitives (`hslider`, `checkbox`) are automatically extracted and transformed into `od::Parameter` instances in the generated C++ wrappers.
+- **Required Build Mechanics:** Simply generating the C++ is not enough to register it. Explicitly scaffold the corresponding `mod.mk` file, bind it within `dsp/<name>.cpp.swig`, define the UI inside `assets/<name>.lua`, and globally register the mod directory inside the root-level `Makefile` under `PROJECTS =`.
+- **CRITICAL VERSION BUMPING:** Because the ER-301 uses an internal caching package manager, it will silently ignore newly compiled `.pkg` files unless their name has explicitly changed. You MUST increment `PKGVERSION = x.y.z` inside `<mod>/mod.mk` directly before EVERY compilation attempt (`make <mod>`). Failure to do this means your changes will never load on the emulator.
 - **Compilation Tooling:** To run the conversion, you MUST execute the `faust2er301` script from within its directory (`faust2er301/bin/`) so it can resolve its Python helper scripts:
   ```bash
   cd /home/dingus/301dev/er-301-custom-units/faust2er301/bin

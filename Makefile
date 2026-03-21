@@ -1,6 +1,6 @@
 # top-level makefile
 
-PROJECTS = lojik sloop strike polygon tapedelay wf259
+PROJECTS = lojik sloop strike polygon tapedelay wf259 granulator
 
 docker_image = tomjfiset/er-301-am335x-build-env:1.1.2
 
